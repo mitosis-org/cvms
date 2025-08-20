@@ -54,6 +54,57 @@ func MakeValidatorInfoList(
 		}
 		return newValidatorInfoList, nil
 
+	case chainName == "mitosis":
+		// mitosis chain uses evmvalidator module instead of staking module
+		newStakingValidatorMap := make(map[string]types.StakingValidatorMetaInfo)
+		mitosisValidators, err := api.GetMitosisValidators(app.CommonClient)
+		if err != nil {
+			return nil, errors.Cause(err)
+		}
+
+		// get tendermint validators to map consensus addresses
+		validators, err := api.GetValidators(app.CommonClient)
+		if err != nil {
+			return nil, errors.Cause(err)
+		}
+
+		// create map of pubkey to hex address from tendermint validators
+		pubkeyToHexAddr := make(map[string]string)
+		for _, validator := range validators {
+			pubkeyToHexAddr[validator.Pubkey.Value] = validator.Address
+		}
+
+		for _, mitosisValidator := range mitosisValidators {
+			// find the corresponding tendermint validator by matching pubkey
+			hexAddress, found := pubkeyToHexAddr[mitosisValidator.Pubkey]
+			if !found {
+				app.Warnf("mitosis validator %s pubkey not found in tendermint validators", mitosisValidator.Addr)
+				continue
+			}
+
+			// use ethereum address as moniker and operator address
+			newStakingValidatorMap[hexAddress] = types.StakingValidatorMetaInfo{
+				Moniker:         mitosisValidator.Addr, // Use Ethereum address as moniker
+				OperatorAddress: mitosisValidator.Addr, // Use Ethereum address as operator address
+			}
+		}
+
+		newValidatorInfoList := make([]indexermodel.ValidatorInfo, 0)
+		for newHexAddress := range newValidatorAddressMap {
+			if _, exist := newStakingValidatorMap[newHexAddress]; !exist {
+				return nil, errors.Errorf("mitosis validator with hex address %s not found in evmvalidator module", newHexAddress)
+			}
+			newValidatorInfoList = append(
+				newValidatorInfoList,
+				indexermodel.ValidatorInfo{
+					ChainInfoID:     chainInfoID,
+					HexAddress:      newHexAddress,
+					OperatorAddress: newStakingValidatorMap[newHexAddress].OperatorAddress,
+					Moniker:         newStakingValidatorMap[newHexAddress].Moniker,
+				})
+		}
+		return newValidatorInfoList, nil
+
 	// only for babylon checkpoint indexer
 	case chainName == "babylon" && len(height) > 0:
 		if len(height) == 0 {

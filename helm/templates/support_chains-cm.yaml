@@ -1340,3 +1340,18 @@ data:
         - upgrade
         - uptime
         - voteindexer
+    mitosis-consensus-mainnet-1:
+      chain_name: mitosis
+      protocol_type: cosmos
+      mainnet: true
+      packages:
+        - block
+        - upgrade
+        - uptime
+        - voteindexer
+    mitosis-execution-mainnet-1:
+      chain_name: mitosis
+      protocol_type: ethereum
+      mainnet: true
+      packages:
+        - block

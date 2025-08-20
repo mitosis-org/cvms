@@ -14,6 +14,9 @@ func GetStatus(exporter *common.Exporter, p common.Packager) (types.CommonUptime
 			return api.GetConsumserUptimeStatus(exporter, p.ChainID)
 		}
 		return api.GetUptimeStatus(exporter)
+	case "mitosis":
+		// mitosis chain uses cosmos-compatible uptime API but with custom validator fetching
+		return api.GetMitosisUptimeStatus(exporter.CommonApp, p.ChainName)
 	default:
 		return types.CommonUptimeStatus{}, common.ErrOutOfSwitchCases
 	}

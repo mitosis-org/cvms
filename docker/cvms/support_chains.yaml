@@ -1559,3 +1559,20 @@ zig-test-2:
   support_asset:
   packages:
     - block
+# Mitosis Chain - Consensus Layer (Cosmos SDK based)
+mitosis-consensus-mainnet-1:
+  chain_name: mitosis
+  protocol_type: cosmos
+  mainnet: true
+  packages:
+    - block
+    - upgrade
+    - uptime
+    - voteindexer
+# Mitosis Chain - Execution Layer (Ethereum compatible)
+mitosis-execution-mainnet-1:
+  chain_name: mitosis
+  protocol_type: ethereum
+  mainnet: true
+  packages:
+    - block

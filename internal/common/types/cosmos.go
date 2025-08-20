@@ -185,6 +185,27 @@ type ConsensusPubkey struct {
 	Key  string `json:"key"`
 }
 
+// mitosis evmvalidator module
+var MitosisValidatorQueryPath = "/mitosis/evmvalidator/v1/validators"
+
+type MitosisValidatorsResponse struct {
+	Validators []MitosisValidator `json:"validators"`
+	Pagination struct {
+		Total string `json:"total"`
+	} `json:"pagination"`
+}
+
+type MitosisValidator struct {
+	Addr             string `json:"addr"`               // Ethereum address
+	Pubkey           string `json:"pubkey"`             // Base64 encoded secp256k1 pubkey
+	Collateral       string `json:"collateral"`         // Collateral amount
+	CollateralShares string `json:"collateral_shares"`  // Collateral shares
+	ExtraVotingPower string `json:"extra_voting_power"` // Extra voting power
+	VotingPower      string `json:"voting_power"`       // Voting power (string in response)
+	Jailed           bool   `json:"jailed"`             // Jailed status
+	Bonded           bool   `json:"bonded"`             // Bonded status
+}
+
 // ccv module
 // Returns the list of validators of a specific consumer chain
 var (

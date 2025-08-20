@@ -2,7 +2,7 @@ package types
 
 var (
 	SupportedValconsTypes  = []string{"valcons", "ica"}
-	SupportedProtocolTypes = []string{"cosmos"}
+	SupportedProtocolTypes = []string{"cosmos", "mitosis"}
 )
 
 // common

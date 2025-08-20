@@ -256,6 +256,31 @@ func GetConsumerChainID(c common.CommonClient) ([]types.ConsumerChain, error) {
 	return result.Chains, nil
 }
 
+func GetMitosisValidators(c common.CommonClient) ([]types.MitosisValidator, error) {
+	// init context
+	ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
+	defer cancel()
+
+	// create requester
+	requester := c.APIClient.R().SetContext(ctx)
+
+	// get mitosis validators from evmvalidator module
+	resp, err := requester.Get(types.MitosisValidatorQueryPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get mitosis validators")
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return nil, errors.Errorf("got %d code from %s", resp.StatusCode(), resp.Request.URL)
+	}
+
+	var result types.MitosisValidatorsResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal mitosis validators response")
+	}
+
+	return result.Validators, nil
+}
+
 func GetConsumerChainHRP(c common.CommonClient) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
 	defer cancel()

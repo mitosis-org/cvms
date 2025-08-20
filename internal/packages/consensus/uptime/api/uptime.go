@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cosmostation/cvms/internal/common"
+	commonapi "github.com/cosmostation/cvms/internal/common/api"
 	commonparser "github.com/cosmostation/cvms/internal/common/parser"
 	commontypes "github.com/cosmostation/cvms/internal/common/types"
 	"github.com/cosmostation/cvms/internal/helper"
@@ -309,4 +310,94 @@ func sliceStakingValidatorByVP(stakingValidators []commontypes.CosmosStakingVali
 		return tokensI > tokensJ // Sort in descending order
 	})
 	return stakingValidators[:totalConsensusValidators]
+}
+
+// GetMitosisUptimeStatus gets uptime status for mitosis chain using evmvalidator module
+func GetMitosisUptimeStatus(c common.CommonApp, chainName string) (types.CommonUptimeStatus, error) {
+	// get tendermint validators
+	validators, err := commonapi.GetValidators(c.CommonClient)
+	if err != nil {
+		return types.CommonUptimeStatus{}, errors.Cause(err)
+	}
+
+	// get mitosis validators from evmvalidator module
+	mitosisValidators, err := commonapi.GetMitosisValidators(c.CommonClient)
+	if err != nil {
+		return types.CommonUptimeStatus{}, errors.Cause(err)
+	}
+
+	// create map of pubkey to mitosis validator info
+	pubkeyToMitosisValidator := make(map[string]commontypes.MitosisValidator)
+	for _, mv := range mitosisValidators {
+		pubkeyToMitosisValidator[mv.Pubkey] = mv
+	}
+
+	// get slashing params
+	signedBlocksWindow, minSignedPerWindow, err := getUptimeParams(c.CommonClient, chainName)
+	if err != nil {
+		return types.CommonUptimeStatus{}, errors.Cause(err)
+	}
+
+	// create validator uptime status list
+	validatorResult := make([]types.ValidatorUptimeStatus, 0)
+	for _, validator := range validators {
+		mitosisValidator, found := pubkeyToMitosisValidator[validator.Pubkey.Value]
+		if !found {
+			c.Warnf("mitosis validator not found for pubkey: %s", validator.Pubkey.Value)
+			continue
+		}
+
+		// get consensus address from tendermint validator hex address
+		bech32ValconsPrefix := "mitovalcons" // mitosis chain valcons prefix
+		bz, _ := hex.DecodeString(validator.Address)
+		consensusAddress, err := sdkhelper.ConvertAndEncode(bech32ValconsPrefix, bz)
+		if err != nil {
+			c.Warnf("failed to convert consensus address for validator %s: %v", mitosisValidator.Addr, err)
+			continue
+		}
+
+		// get slashing info for this validator
+		queryPath := commontypes.CosmosSlashingQueryPath(consensusAddress)
+		ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
+		resp, err := c.APIClient.R().SetContext(ctx).Get(queryPath)
+		cancel()
+
+		var missedBlockCounter, isTomstoned float64
+		if err != nil || resp.StatusCode() != http.StatusOK {
+			// if slashing info is not available, assume no missed blocks
+			missedBlockCounter = 0
+			isTomstoned = 0
+		} else {
+			_, _, isTomstoned, missedBlockCounter, err = commonparser.CosmosSlashingParser(resp.Body())
+			if err != nil {
+				missedBlockCounter = 0
+				isTomstoned = 0
+			}
+		}
+
+		// parse voting power
+		vp, err := strconv.ParseFloat(validator.VotingPower, 64)
+		if err != nil {
+			vp = 0
+		}
+
+		// get proposer address
+		proposerAddress, _ := sdkhelper.ProposerAddressFromPublicKey(validator.Pubkey.Value)
+
+		validatorResult = append(validatorResult, types.ValidatorUptimeStatus{
+			Moniker:                   mitosisValidator.Addr, // use ethereum address as moniker
+			ProposerAddress:           proposerAddress,
+			ValidatorOperatorAddress:  mitosisValidator.Addr, // use ethereum address as operator address
+			ValidatorConsensusAddress: consensusAddress,
+			MissedBlockCounter:        missedBlockCounter,
+			VotingPower:               vp,
+			IsTomstoned:               isTomstoned,
+		})
+	}
+
+	return types.CommonUptimeStatus{
+		SignedBlocksWindow: signedBlocksWindow,
+		MinSignedPerWindow: minSignedPerWindow,
+		Validators:         validatorResult,
+	}, nil
 }

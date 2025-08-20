@@ -2,7 +2,7 @@ package types
 
 // NOTE: SupportedChainTypes = []string{"cosmos", "ethereum", "aptos", "sui", "avalanche", "celestia", "polkadot", "aleo"}
 var (
-	SupportedChainTypes = []string{"cosmos", "ethereum", "celestia", "gnoland"}
+	SupportedChainTypes = []string{"cosmos", "ethereum", "celestia", "gnoland", "mitosis"}
 )
 
 type CommonBlock struct {

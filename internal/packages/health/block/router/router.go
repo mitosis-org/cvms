@@ -53,6 +53,16 @@ func GetStatus(client *common.Exporter, protocolType string) (types.CommonBlock,
 
 		return api.GetBlockStatus(client, CommonBlockCallClient, CommonBlockCallMethod, CommonBlockQueryPath, CommonBlockPayload, CommonBlockParser)
 
+	case "mitosis":
+		// mitosis chain uses cosmos-compatible RPC for block status
+		CommonBlockCallClient = common.RPC
+		CommonBlockCallMethod = common.GET
+		CommonBlockQueryPath = types.CosmosBlockQueryPath
+		CommonBlockPayload = types.CosmosBlockQueryPayload
+		CommonBlockParser = parser.CosmosBlockParser
+
+		return api.GetBlockStatus(client, CommonBlockCallClient, CommonBlockCallMethod, CommonBlockQueryPath, CommonBlockPayload, CommonBlockParser)
+
 	default:
 		return types.CommonBlock{}, common.ErrOutOfSwitchCases
 	}
