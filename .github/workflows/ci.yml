@@ -11,6 +11,13 @@ on:
   pull_request: # On every pull request targeting the main branch
     branches:
       - develop
+    workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag'
+        required: false
+        default: 'latest'
+        type: string
 
 jobs:
   build-and-test:
