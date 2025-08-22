@@ -83,7 +83,7 @@ func MakeValidatorInfoList(
 				// This is an active validator, try to find corresponding mitosis validator
 				foundMitosis := false
 				for _, mitosisValidator := range mitosisValidators {
-					// Since we can't match by pubkey (different formats), 
+					// Since we can't match by pubkey (different formats),
 					// we'll use the hex address as the identifier
 					// and use Ethereum address as moniker
 					if !mitosisValidator.Jailed && mitosisValidator.Bonded {
@@ -99,7 +99,7 @@ func MakeValidatorInfoList(
 						}
 					}
 				}
-				
+
 				// If no matching mitosis validator found, use hex address as fallback
 				if !foundMitosis {
 					newStakingValidatorMap[newHexAddress] = types.StakingValidatorMetaInfo{
