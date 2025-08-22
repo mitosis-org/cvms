@@ -214,7 +214,19 @@ func (vidx *VoteIndexer) batchSync(lastIndexPointerHeight, newIndexPointerHeight
 
 	//  only loggic when there are miss validators in the network
 	if len(ValidatorVoteList) > 0 {
-		vidx.Infof("found %d miss validators from %d to %d in the network", len(ValidatorVoteList), startHeight, endHeight)
+		// Count actual missed validators
+		missedCount := 0
+		for _, vote := range ValidatorVoteList {
+			if vote.Status == model.Missed {
+				missedCount++
+			}
+		}
+
+		if missedCount > 0 {
+			vidx.Infof("found %d missed votes from %d to %d in the network", missedCount, startHeight, endHeight)
+		} else {
+			vidx.Debugf("processed %d validator votes from %d to %d (no misses)", len(ValidatorVoteList), startHeight, endHeight)
+		}
 	}
 
 	// NOTE: if solo validator mode, we don't need to insert all validotors vote status.
