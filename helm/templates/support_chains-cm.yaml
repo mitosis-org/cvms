@@ -8,7 +8,7 @@ metadata:
 data:
   support_chains.yaml: |
     ---
-    0x5ec: #1516
+    0x5ec:
       chain_name: story
       protocol_type: ethereum
       mainnet: false
