@@ -68,51 +68,42 @@ func MakeValidatorInfoList(
 			return nil, errors.Cause(err)
 		}
 
-		// For mitosis chain, we need to handle both jailed and active validators
-		// Create a map of all tendermint validators
-		tendermintValidatorMap := make(map[string]types.CosmosValidator)
-		for _, validator := range validators {
-			tendermintValidatorMap[validator.Address] = validator
+		// Create a map of mitosis validators by their pubkey (base64 encoded)
+		mitosisValidatorByPubkey := make(map[string]types.MitosisValidator)
+		for _, mv := range mitosisValidators {
+			mitosisValidatorByPubkey[mv.Pubkey] = mv
 		}
 
-		// For mitosis, we should map all validators from evmvalidator module
-		// regardless of whether they are in the tendermint validator set
-		for newHexAddress := range newValidatorAddressMap {
-			// First check if this hex address exists in tendermint validators
-			if _, found := tendermintValidatorMap[newHexAddress]; found {
-				// This is an active validator, try to find corresponding mitosis validator
-				foundMitosis := false
-				for _, mitosisValidator := range mitosisValidators {
-					// Since we can't match by pubkey (different formats),
-					// we'll use the hex address as the identifier
-					// and use Ethereum address as moniker
-					if !mitosisValidator.Jailed && mitosisValidator.Bonded {
-						// For active validators, we can't directly match,
-						// so we'll use a simple mapping approach
-						if !foundMitosis {
-							newStakingValidatorMap[newHexAddress] = types.StakingValidatorMetaInfo{
-								Moniker:         mitosisValidator.Addr, // Use Ethereum address as moniker
-								OperatorAddress: mitosisValidator.Addr, // Use Ethereum address as operator address
-							}
-							foundMitosis = true
-							break
-						}
-					}
-				}
+		// Create a map of tendermint validators by hex address and their pubkeys
+		tendermintValidatorMap := make(map[string]string) // hex address -> base64 pubkey
+		for _, validator := range validators {
+			// Extract the base64 pubkey from the validator
+			tendermintValidatorMap[validator.Address] = validator.Pubkey.Value
+		}
 
-				// If no matching mitosis validator found, use hex address as fallback
-				if !foundMitosis {
+		// Map validators from the newValidatorAddressMap
+		for newHexAddress := range newValidatorAddressMap {
+			// Check if this hex address exists in tendermint validators
+			if pubkeyBase64, found := tendermintValidatorMap[newHexAddress]; found {
+				// Find the corresponding mitosis validator by pubkey
+				if mitosisValidator, exists := mitosisValidatorByPubkey[pubkeyBase64]; exists {
 					newStakingValidatorMap[newHexAddress] = types.StakingValidatorMetaInfo{
-						Moniker:         newHexAddress, // Use hex address as moniker
-						OperatorAddress: newHexAddress, // Use hex address as operator address
+						Moniker:         mitosisValidator.Addr, // Use Ethereum address as moniker
+						OperatorAddress: mitosisValidator.Addr, // Use Ethereum address as operator address
+					}
+				} else {
+					// Fallback: use hex address if pubkey match not found
+					app.Warnf("Could not find mitosis validator for pubkey %s, hex address %s", pubkeyBase64, newHexAddress)
+					newStakingValidatorMap[newHexAddress] = types.StakingValidatorMetaInfo{
+						Moniker:         newHexAddress,
+						OperatorAddress: newHexAddress,
 					}
 				}
 			} else {
-				// This hex address is not in tendermint validators (might be from block proposer)
-				// Use hex address as fallback
+				// Not in tendermint validators, use hex address as fallback
 				newStakingValidatorMap[newHexAddress] = types.StakingValidatorMetaInfo{
-					Moniker:         newHexAddress, // Use hex address as moniker
-					OperatorAddress: newHexAddress, // Use hex address as operator address
+					Moniker:         newHexAddress,
+					OperatorAddress: newHexAddress,
 				}
 			}
 		}
